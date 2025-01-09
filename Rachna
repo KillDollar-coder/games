@@ -1,0 +1,128 @@
+flutter create video_image_generator
+cd video_image_generator
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^0.13.3
+  image_picker: ^0.8.4+4
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Video & Image Generator',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TextEditingController _textController = TextEditingController();
+  String _imageUrl = '';
+  String _videoUrl = '';
+  final ImagePicker _picker = ImagePicker();
+  List<XFile>? _imageFiles;
+
+  Future<void> _pickImages() async {
+    _imageFiles = await _picker.pickMultiImage();
+    setState(() {});
+  }
+
+  Future<void> _generateImage() async {
+    final response = await http.post(
+      Uri.parse('http://YOUR_BACKEND_URL/generate-image'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'text': _textController.text,
+        'style': 'anime', // Example style
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _imageUrl = jsonDecode(response.body)['imageUrl'];
+      });
+    } else {
+      // Handle error
+    }
+  }
+
+  Future<void> _generateVideo() async {
+    final response = await http.post(
+      Uri.parse('http://YOUR_BACKEND_URL/generate-video'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'text': _textController.text,
+        'images': _imageFiles?.map((file) => file.path).toList(),
+        'audio': 'audio_url', // Add your audio URL here
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _videoUrl = jsonDecode(response.body)['videoUrl'];
+      });
+    } else {
+      // Handle error
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Video & Image Generator'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _textController,
+              decoration: InputDecoration(labelText: 'Enter text'),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _pickImages,
+              child: Text('Pick Images'),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _generateImage,
+              child: Text('Generate Image'),
+            ),
+            SizedBox(height: 10),
+            _imageUrl.isNotEmpty
+                ? Image.network(_imageUrl)
+                : Container(),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _generateVideo,
+              child: Text('Generate Video'),
+            ),
+            SizedBox(height: 10),
+            _videoUrl.isNotEmpty
+                ? Text('Video URL: $_videoUrl')
+                : Container(),
+          ],
+        ),
+      ),
+    );
+  }
+}
